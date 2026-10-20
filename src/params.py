@@ -3,8 +3,6 @@ import numpy as np
 # --- ENVIRONMENT ---
 RHO_AIR        = 1.225      # [kg/m^3] air density, ISA sea level
 G              = 9.81       # [m/s^2] gravitational acceleration
-GRADE          = 0.03       # [-] road gradient, 3% (rise/run) - coursework brief
-ALPHA_GRADIENT = np.arctan(GRADE)   # [rad] derived from GRADE
 
 # --- VEHICLE ---
 MASS           = 1685       # [kg] vehicle mass - coursework brief

@@ -3,7 +3,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import params as p
-from model import drag_force, rolling_force, grade_force, resistance_force
+from model import drag_force, rolling_force, resistance_force
 
 # --- SHARED STYLE (import this module from other sections to reuse it) ---
 FIG_DIR  = Path(__file__).resolve().parent.parent / "figures"
@@ -48,8 +48,17 @@ def fig_resistance_forces(v_max_kmh=300):
     fig, ax = plt.subplots()
     ax.plot(v_kmh, drag_force(v), label="Drag")
     ax.plot(v_kmh, rolling_force(v), label="Rolling resistance")
-    ax.plot(v_kmh, grade_force(v), label=f"Gradient ({p.GRADE*100:.0f}%)")
     ax.plot(v_kmh, resistance_force(v), "k", lw=2, label="Total")
+
+    # Drag = rolling resistance crossover (first sign change of the difference)
+    diff = drag_force(v) - rolling_force(v)
+    i = np.argmax(diff >= 0)
+    v_x = np.interp(0, diff[i-1:i+1], v_kmh[i-1:i+1])
+    F_x = drag_force(v_x/3.6)
+    ax.plot(v_x, F_x, "o", color=HIGHLIGHT)
+    ax.annotate(f"{v_x:.1f} km/h, {F_x:.0f} N", (v_x, F_x), xytext=(8, -14),
+                textcoords="offset points", color=HIGHLIGHT)
+
     ax.set_xlabel("Speed [km/h]")
     ax.set_ylabel("Force [N]")
     ax.set_title("Resistance forces vs speed")
@@ -61,7 +70,7 @@ def fig_power_curves(pc):
     show = v_kmh <= 1.15*pc["v_max"]*3.6
     fig, ax = plt.subplots(figsize=(9, 6))
     for g, P in pc["P_gear"].items():
-        ax.plot(v_kmh[show], P[show]/1e3, lw=1, label=f"Gear {g}")
+        ax.plot(v_kmh[show], P[show]/1e3, lw=1, alpha=0.45, label=f"Gear {g}")   # soft, so legend text stays readable
     ax.plot(v_kmh[show], pc["P_tot"][show]/1e3, "k", lw=2, label="P_total")
     ax.axvline(pc["v_max"]*3.6, color=HIGHLIGHT, linestyle="--",
                label=f"v_max unrestricted {pc['v_max']*3.6:.0f} km/h")

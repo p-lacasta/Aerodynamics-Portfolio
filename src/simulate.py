@@ -1,6 +1,6 @@
 import numpy as np
 import params as p
-from model import (engine_rpm, drag_force, rolling_force, grade_force,
+from model import (engine_rpm, drag_force, rolling_force,
                    resistance_force, tractive_force, acceleration)
 
 # --- SETTINGS ---
@@ -58,7 +58,6 @@ def power_curves():
     res = {"v": v,
            "P_drag": drag_force(v)*v,
            "P_roll": rolling_force(v)*v,
-           "P_grad": grade_force(v)*v,
            "P_tot":  resistance_force(v)*v,
            "P_gear": {g: wheel_power(v, g) for g in range(1, N_GEARS+1)}}
 
@@ -144,9 +143,9 @@ def elasticity_run(gear, v_start=80/3.6, v_end=120/3.6):
 # --- 4. AERODYNAMIC COEFFICIENT SENSITIVITY ---
 # One coefficient changes at a time; everything else stays at its params.py value.
 
-CD_VALUES = p.CD*(1 + np.array([-0.2, -0.1, 0.0, 0.1, 0.2]))   # [-] baseline +/-20%
-CL_VALUES = np.array([-0.4, -0.2, 0.0, 0.2, 0.4])              # [-] downforce to lift
-# C_L uses a wider, absolute range: +/-20% of 0.2 is only +/-0.04 and changes nothing visible.
+COEFF_STEPS = np.array([-0.10, -0.05, 0.0, 0.05, 0.10])   # [-] same absolute +/- step for C_d and C_L
+CD_VALUES = p.CD + COEFF_STEPS   # [-] 0.26-0.46, passenger car range (~0.25-0.45)
+CL_VALUES = p.CL + COEFF_STEPS   # [-] 0.10-0.30, passenger car range (~0.0-0.4, net lift)
 
 def best_elasticity_gear():
     """Fastest 80-120 gear with the current params."""
@@ -208,7 +207,7 @@ def summary():
     best = min(ela, key=lambda g: ela[g]["t_run"])
 
     print("=" * 52)
-    print(f"Conditions: {p.GRADE*100:.0f}% grade, Cd = {p.CD}, A = {p.AREA_FRONT} m^2, m = {p.MASS} kg")
+    print(f"Conditions: level road, Cd = {p.CD}, A = {p.AREA_FRONT} m^2, m = {p.MASS} kg")
     print("=" * 52)
 
     print("\nPower balance")
@@ -232,25 +231,32 @@ def summary():
             print(f"  Gear {g}: outside torque map")
     print(f"  Best gear: {best} ({ela[best]['t_run']:.2f} s)")
 
+    # Sensitivity tables: each metric followed by its % change from the baseline run
+    def metrics(r):
+        return (r["power"]["v_max"]*3.6, time_to_speed(r["accel"], 100),
+                time_to_speed(r["accel"], 200), r["elasticity"]["t_run"])
+    base = (pc["v_max"]*3.6, time_to_speed(acc, 100), time_to_speed(acc, 200), ela[best]["t_run"])
+    fmt  = ("6.1f", "5.2f", "5.2f", "5.2f")
+    def row(r):
+        return " | ".join(f"{m:{f}} ({(m/b - 1)*100:+5.1f}%)" for m, b, f in zip(metrics(r), base, fmt))
+    head = f"{'v_max [km/h]':<15} | {'0-100 [s]':<14} | {'0-200 [s]':<14} | 80-120 gear {{}} [s]"
+
     sens = {"CD": coeff_sensitivity("CD", CD_VALUES),
             "CL": coeff_sensitivity("CL", CL_VALUES)}
     for name, label, fixed in [("CD", "Drag", f"C_L = {p.CL}"), ("CL", "Lift", f"C_d = {p.CD}")]:
         gear = next(iter(sens[name].values()))["elasticity"]["gear"]
-        print(f"\n{label} coefficient sensitivity ({fixed}, A = {p.AREA_FRONT} m^2 fixed)")
-        print(f"   {name}   | v_max [km/h] | 0-100 [s] | 0-200 [s] | 80-120 gear {gear} [s]")
+        print(f"\n{label} coefficient sensitivity ({fixed}, A = {p.AREA_FRONT} m^2 fixed, % vs baseline)")
+        print(f"   {name}    | {head.format(gear)}")
         for val, r in sens[name].items():
-            print(f"  {val:+.3f} |    {r['power']['v_max']*3.6:6.1f}    |   {time_to_speed(r['accel'], 100):5.2f}   |"
-                  f"   {time_to_speed(r['accel'], 200):5.2f}   |   {r['elasticity']['t_run']:5.2f}")
+            print(f"  {val:+.3f} | {row(r)}")
 
     yaw = yaw_cases()
     gear = next(iter(yaw.values()))["elasticity"]["gear"]
-    print(f"\nYaw sensitivity (crosswind, C_d and C_L from yaw table up to {p.PSI[-1]} deg)")
-    print(f"  Wind [m/s] | yaw at v_max [deg] | v_max [km/h] | 0-100 [s] | 0-200 [s] | 80-120 gear {gear} [s]")
+    print(f"\nYaw sensitivity (crosswind, C_d and C_L from yaw table up to {p.PSI[-1]} deg, % vs baseline)")
+    print(f"  Wind [m/s] | yaw at v_max [deg] | {head.format(gear)}")
     for w, r in yaw.items():
         psi_vmax = np.degrees(np.arctan2(w, r["power"]["v_max"]))
-        print(f"     {w:4.0f}    |       {psi_vmax:5.1f}        |    {r['power']['v_max']*3.6:6.1f}    |"
-              f"   {time_to_speed(r['accel'], 100):5.2f}   |   {time_to_speed(r['accel'], 200):5.2f}   |"
-              f"   {r['elasticity']['t_run']:5.2f}")
+        print(f"     {w:4.0f}    |       {psi_vmax:5.1f}        | {row(r)}")
 
     return {"power": pc, "accel": acc, "elasticity": ela, "sensitivity": sens, "yaw": yaw}
 

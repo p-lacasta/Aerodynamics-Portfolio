@@ -48,17 +48,14 @@ def lift_force(v):
     return 0.5*p.RHO_AIR*lift_coeff(v)*p.AREA_FRONT*air_speed_sq(v)
 
 def normal_force(v):
-    """Total tyre load [N]: weight component normal to the road, minus aero lift."""
-    return p.MASS*p.G*np.cos(p.ALPHA_GRADIENT) - lift_force(v)
+    """Total tyre load [N]: weight minus aero lift (level road)."""
+    return p.MASS*p.G - lift_force(v)
 
 def rolling_force(v):
     return p.C_RR*normal_force(v)
 
-def grade_force(v):
-    return p.MASS*p.G*np.sin(p.ALPHA_GRADIENT)*np.ones_like(v)
-
 def resistance_force(v):
-    return drag_force(v) + rolling_force(v) + grade_force(v)
+    return drag_force(v) + rolling_force(v)
 
 
 # --- TRACTIVE FORCE ---
