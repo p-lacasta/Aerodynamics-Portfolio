@@ -1,33 +1,6 @@
-# ENGR7006 Advanced Vehicle Aerodynamics – Portfolio code
+# Advanced Vehicle Aerodynamics – Portfolio code
 
-Python code behind my individual portfolio for **ENGR7006 Advanced Vehicle Aerodynamics** (MSc Motorsport Engineering, Oxford Brookes University, 2026–27). Each folder matches a section of the coursework brief. The scripts produce the figures and tables used in the portfolio.
-
-> **Academic note:** this is assessed individual coursework. The code, results and conclusions are my own work. My use of AI tools is declared in the Brookes AI declaration form attached to the submitted portfolio.
-
----
-
-## Course brief
-
-| | |
-|---|---|
-| Module | ENGR7006 Advanced Vehicle Aerodynamics |
-| Assessment | Individual Portfolio (CW1), **40%** of the module |
-| Banner ID | CWS1WEEK08 |
-| Deadline | **19:00, Friday 13 November 2026 (Week 8)**, PDF or Word to Turnitin via Moodle |
-| Word limit | 1600 words, not counting references, reflection, appendices, figure/table titles or the A3 infographic |
-| Learning outcomes | LO1, LO3, LO4; Engineering Council AHEP4 M3, M4, M17, M18 |
-
-### Sections and weightings
-
-| # | Section (brief) | Weight | AHEP4 | What the brief asks for | Code in this repo |
-|---|---|---|---|---|---|
-| 1 | Vehicle Performance Evaluation | 15% | M3, M4 | Effect of aero metrics on maximum speed, acceleration times, elasticity and power absorbed in drag against speed, plus the effect of yaw on each. Any vehicle; state approach, assumptions and limitations; plots against time. | `S1 - Vehicle performance evaluation/` |
-| 2 | Boundary Layer Evaluation, OBU wind tunnel | 10% | M3, M4 | Boundary layer, displacement and momentum thickness along the working section **including the inlet contraction**. Max working-section speed 40 m/s; working section 660 mm long, 310 × 310 mm (Armfield C30). | `S2 - Boundary layer evaluation/` |
-| 3 | Body Shape Aerodynamic Impact and Stability | 30% | M3, M4, M17 | 3D flow fields of fastback, notchback and squareback bodies; link between body shape, flow field, force coefficients and stability, with emphasis on **aero balance**; stability fixes for road and race use; A3 AI-generated infographic for a general audience with a reflection on the AI tool. | `S3 - Body shape evaluation/` |
-| 4 | Numerical and Experimental Aerofoil Evaluation (NACA0015) | 30% | M3 | (a) mesh convergence at one AOA; (b) Cl, Cd vs AOA 0–16°, experiment vs CFD; (c) Cp at 0, 4, 8, 10, 12, 16°; (d) high vs low y+ wall modelling; (e) separation point and Cp at 10° for S-A, realizable k-ε and k-ω SST. Parts b–e use the final mesh from (a). | *Not yet in the repo* |
-| – | Presentation and Reflection | 15% | M17, M18 | Structure, figures, referencing; compulsory reflection on learning, AI use and CPD (IMechE/IET); effectiveness of communication to technical and non-technical audiences. | – (written in the portfolio) |
-
-The full brief and the marking rubric are on the module Moodle page.
+Python code for my coursework portfolio in **Advanced Vehicle Aerodynamics** at **Oxford Brookes University**. Each folder holds one section of the portfolio, and the scripts produce the figures and tables used in it.
 
 ---
 
@@ -44,7 +17,7 @@ Aerodynamics-Portfolio/
 │   └── figures/           # output (git-ignored)
 ├── S2 - Boundary layer evaluation/
 │   ├── Boundary_Layer_v4.py
-│   ├── Armfield Wind Tunnel Inlet Contraction and Working Section Profile.xlsx   # tunnel geometry (Moodle)
+│   ├── Armfield Wind Tunnel Inlet Contraction and Working Section Profile.xlsx   # tunnel geometry
 │   └── plots/             # output (git-ignored)
 ├── S3 - Body shape evaluation/
 │   ├── body_shape.py
@@ -139,13 +112,11 @@ python "S3 - Body shape evaluation/body_shape.py"
 - `figures/`: `A_coefficients_bar`, `B1_axle_load_change_vs_speed`, `B2_front_load_share_vs_speed`, `E_cl_r_correction`, `F_spoiler_coefficients`, `G1_spoiler_axle_load_change_vs_speed`, `G2_spoiler_front_load_share_vs_speed`.
 - `Body_shape_results.xlsx`: one sheet per table or figure (aero balance, dynamic loads, plotted data).
 
-The A3 infographic and the flow-field discussion for this section are in the portfolio, not in this repo.
-
 ---
 
 ## Section 4 – NACA0015 aerofoil
 
-To be added: processing of the group's pressure-tapping data and the CFD exports for the mesh convergence study, Cl/Cd vs AOA, Cp distributions, the y+ comparison and the turbulence-model comparison at 10°.
+To be added: comparison of wind tunnel and CFD results.
 
 ---
 
@@ -157,4 +128,4 @@ To be added: processing of the group's pressure-tapping data and the CFD exports
 
 ## Author
 
-Pau Lacasta, MSc Motorsport Engineering, Oxford Brookes University
+Pau Lacasta, Oxford Brookes University
