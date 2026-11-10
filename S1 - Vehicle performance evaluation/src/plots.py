@@ -216,35 +216,36 @@ def fig_elasticity(ela):
 
 
 def fig_coeff_sensitivity(sens, name):
-    """One line per coefficient value: max speed, acceleration, elasticity, and the
-    resistance power the coefficient acts on (drag for C_d, rolling for C_L)."""
+    """One figure, four flat panels stacked vertically, one line per coefficient value:
+    (a) maximum speed, (b) acceleration, (c) elasticity, (d) the resistance power the
+    coefficient acts on (drag for C_d and crosswind, rolling for C_L). Legends sit to the right."""
     from simulate import time_to_speed
     label = {"CD":   lambda val: f"$C_d$ = {val:.2f}",
              "CL":   lambda val: f"$C_L$ = {val:.2f}",
              "WIND": lambda val: f"$w$ = {val:.0f} m/s"}[name]
     vals = sorted(sens)
     colors = series_colours(len(vals))
-    fig, axes = plt.subplots(2, 2, figsize=(11, 8.5))
-    ax_v, ax_a, ax_e, ax_d = axes.flat
+    fig, (ax_v, ax_a, ax_e, ax_d) = plt.subplots(4, 1, figsize=(10, 11))
 
-    # Maximum speed: power required per value against the best-gear power available
     pc0 = sens[vals[0]]["power"]
     v_kmh = pc0["v"]*3.6
     show = v_kmh <= 1.1*max(r["power"]["v_max"] for r in sens.values())*3.6
+
+    # (a) Maximum speed: power required per value against the best-gear power available
     P_avail = np.fmax.reduce(list(pc0["P_gear"].values()))   # tyre grip barely matters here
     ax_v.plot(v_kmh[show], P_avail[show]/1e3, "k", lw=2, label="Available (best gear)")
     for val, c in zip(vals, colors):
         pc = sens[val]["power"]
         ax_v.plot(v_kmh[show], pc["P_tot"][show]/1e3, color=c,
-                  label=f"{label(val)}: {pc['v_max']*3.6:.1f} km/h")
+                  label=f"{label(val)}: $v_{{max}}$ = {pc['v_max']*3.6:.1f} km/h")
         ax_v.plot(pc["v_max"]*3.6, np.interp(pc["v_max"], pc["v"], pc["P_tot"])/1e3, "o", color=c)
     ax_v.set_xlabel("Speed [km/h]")
     ax_v.set_ylabel("Power [kW]")
-    ax_v.set_title("(a) Maximum speed")
+    ax_v.set_title("(a) Maximum speed: power at the wheels against power required")
     ax_v.set_xlim(0, v_kmh[show].max())
     ax_v.set_ylim(bottom=0)
 
-    # Acceleration 0-100 and 0-200
+    # (b) Acceleration 0-100 and 0-200
     for val, c in zip(vals, colors):
         log = sens[val]["accel"]
         ax_a.plot(log["t"], log["v"]*3.6, color=c,
@@ -257,7 +258,7 @@ def fig_coeff_sensitivity(sens, name):
     ax_a.set_xlim(left=0)
     ax_a.set_ylim(bottom=0)
 
-    # Elasticity 80-120 in a fixed gear
+    # (c) Elasticity 80-120 in a fixed gear
     for val, c in zip(vals, colors):
         log = sens[val]["elasticity"]
         ax_e.plot(log["t"], log["v"]*3.6, color=c, label=f"{label(val)}: {log['t_run']:.2f} s")
@@ -266,21 +267,22 @@ def fig_coeff_sensitivity(sens, name):
     ax_e.set_title(f"(c) Elasticity, 80-120 km/h in gear {log['gear']}")
     ax_e.set_xlim(left=0)
 
-    # The resistance power this coefficient changes
-    key, title = {"CD":   ("P_drag", "(d) Power absorbed by aerodynamic drag"),
-                  "WIND": ("P_drag", "(d) Power absorbed by aerodynamic drag"),
-                  "CL":   ("P_roll", "(d) Power absorbed by rolling resistance")}[name]
+    # (d) The resistance power this coefficient changes
+    key, what = {"CD":   ("P_drag", "aerodynamic drag"),
+                 "WIND": ("P_drag", "aerodynamic drag"),
+                 "CL":   ("P_roll", "rolling resistance")}[name]
     for val, c in zip(vals, colors):
         pc = sens[val]["power"]
         ax_d.plot(v_kmh[show], pc[key][show]/1e3, color=c, label=label(val))
     ax_d.set_xlabel("Speed [km/h]")
     ax_d.set_ylabel("Power [kW]")
-    ax_d.set_title(title)
+    ax_d.set_title(f"(d) Power absorbed by {what}")
     ax_d.set_xlim(0, v_kmh[show].max())
     ax_d.set_ylim(bottom=0)
 
-    for ax in axes.flat:
-        ax.legend(fontsize=8, loc="lower right" if ax is ax_a else "upper left")
+    # Legends to the right of each panel, so the panels can stay wide and flat
+    for ax in (ax_v, ax_a, ax_e, ax_d):
+        ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=9)
     fig.suptitle({"CD":   "Effect of drag coefficient $C_d$ on performance",
                   "CL":   "Effect of lift coefficient $C_L$ on performance",
                   "WIND": r"Effect of crosswind on performance ($C_d$ and $C_L$ from yaw data)"}[name])
@@ -314,9 +316,9 @@ if __name__ == "__main__":
         "accel_0_200":       fig_accel(res["accel"]),
         "accel_baseline":    fig_accel_baseline(res["accel"]),
         "elasticity_80_120": fig_elasticity(res["elasticity"]),
+        "yaw_coefficients":  fig_yaw_coefficients(),
         "cd_sensitivity":    fig_coeff_sensitivity(res["sensitivity"]["CD"], "CD"),
         "cl_sensitivity":    fig_coeff_sensitivity(res["sensitivity"]["CL"], "CL"),
-        "yaw_coefficients":  fig_yaw_coefficients(),
         "yaw_sensitivity":   fig_coeff_sensitivity(res["yaw"], "WIND"),
     }
     for name, fig in figures.items():

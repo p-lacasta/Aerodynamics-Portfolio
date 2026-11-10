@@ -145,7 +145,8 @@ def plot_loads_vs_speed():
     # Continuous speed range from 0 to 60 m/s, for smooth curves
     v = np.linspace(0, 60, 121)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
+    fig1, ax1 = plt.subplots()  # change in axle load
+    fig2, ax2 = plt.subplots()  # front share of normal load
     table = {"Speed (m/s)": v}  # keeps the plotted numbers so they can go to Excel
 
     for name in VEHICLES:
@@ -157,10 +158,10 @@ def plot_loads_vs_speed():
         dN_r = (N_r - N_r0) / N_r0 * 100
         share = N_f / (N_f + N_r) * 100  # front share of the total normal load, in %
 
-        ax1.plot(v, dN_f, color=COLOURS[name], linestyle="-", label=f"{name} front")   # front: solid
-        ax1.plot(v, dN_r, color=COLOURS[name], linestyle="--", label=f"{name} rear")   # rear: dashed
+        ax1.plot(v*3.6, dN_f, color=COLOURS[name], linestyle="-", label=f"{name} front")   # front: solid
+        ax1.plot(v*3.6, dN_r, color=COLOURS[name], linestyle="--", label=f"{name} rear")   # rear: dashed
 
-        ax2.plot(v, share, color=COLOURS[name], label=name)
+        ax2.plot(v*3.6, share, color=COLOURS[name], label=name)
         # Static front share: MASS_DISTRIBUTION is already a percentage
         ax2.axhline(MASS_DISTRIBUTION[name], color=COLOURS[name], linestyle=":", label=f"{name} static")
 
@@ -169,24 +170,23 @@ def plot_loads_vs_speed():
         table[f"{name} front share (%)"] = share
 
     ax1.axhline(0, color=GREY, linewidth=0.8)
-    ax1.set_xlabel("Speed [m/s]")
+    ax1.set_xlabel("Speed [km/h]")
     ax1.set_ylabel("Change in axle load [% of static]")
-    ax1.set_title("Change in axle load with speed")
-    ax1.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+    ax1.set_title("Change in axle load with speed by body shape")
+    ax1.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
 
-    ax2.set_xlabel("Speed [m/s]")
+    ax2.set_xlabel("Speed [km/h]")
     ax2.set_ylabel("Front share of normal load [%]")
-    ax2.set_title("Front share of normal load with speed")
-    ax2.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+    ax2.set_title("Front share of normal load with speed by body shape")
+    ax2.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
 
-    # Secondary axis on top in km/h for both panels: 1 m/s = 3.6 km/h, and back again
+    # Secondary axis on top in m/s for both figures (bottom axis is km/h): 1 m/s = 3.6 km/h
     for ax in (ax1, ax2):
-        top = ax.secondary_xaxis("top", functions=(lambda x: x*3.6, lambda x: x/3.6))
-        top.set_xlabel("Speed [km/h]")
+        top = ax.secondary_xaxis("top", functions=(lambda x: x/3.6, lambda x: x*3.6))
+        top.set_xlabel("Speed [m/s]")
 
-    fig.suptitle("Axle loads by body shape")
-    fig.tight_layout()
-    save(fig, "B_loads_vs_speed")
+    save(fig1, "B1_axle_load_change_vs_speed")
+    save(fig2, "B2_front_load_share_vs_speed")
 
     return pd.DataFrame(table)
 
@@ -264,7 +264,8 @@ def plot_spoiler_loads(variants):
     v = np.linspace(0, 60, 121)
     colours = [COLOURS["FASTBACK"], SPOILER_COLOUR]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
+    fig1, ax1 = plt.subplots()  # change in axle load
+    fig2, ax2 = plt.subplots()  # front share of normal load
     table = {"Speed (m/s)": v}  # keeps the plotted numbers so they can go to Excel
 
     for colour, (name, c) in zip(colours, variants.items()):
@@ -275,34 +276,33 @@ def plot_spoiler_loads(variants):
         dN_r = (N_r - N_r0) / N_r0 * 100
         share = N_f / (N_f + N_r) * 100
 
-        ax1.plot(v, dN_f, color=colour, linestyle="-", label=f"{name} front")   # front: solid
-        ax1.plot(v, dN_r, color=colour, linestyle="--", label=f"{name} rear")   # rear: dashed
-        ax2.plot(v, share, color=colour, label=name)
+        ax1.plot(v*3.6, dN_f, color=colour, linestyle="-", label=f"{name} front")   # front: solid
+        ax1.plot(v*3.6, dN_r, color=colour, linestyle="--", label=f"{name} rear")   # rear: dashed
+        ax2.plot(v*3.6, share, color=colour, label=name)
 
         table[f"{name} dN_f (%)"] = dN_f
         table[f"{name} dN_r (%)"] = dN_r
         table[f"{name} front share (%)"] = share
 
     ax1.axhline(0, color=GREY, linewidth=0.8)
-    ax1.set_xlabel("Speed [m/s]")
+    ax1.set_xlabel("Speed [km/h]")
     ax1.set_ylabel("Change in axle load [% of static]")
-    ax1.set_title("Change in axle load with speed")
+    ax1.set_title("Fastback change in axle load with speed: default vs spoiler")
     ax1.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
 
     ax2.axhline(MASS_DISTRIBUTION["FASTBACK"], color=GREY, linestyle=":", label="Static")
-    ax2.set_xlabel("Speed [m/s]")
+    ax2.set_xlabel("Speed [km/h]")
     ax2.set_ylabel("Front share of normal load [%]")
-    ax2.set_title("Front share of normal load with speed")
+    ax2.set_title("Fastback front share of normal load with speed: default vs spoiler")
     ax2.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
 
-    # Secondary axis on top in km/h for both panels
+    # Secondary axis on top in m/s for both figures (bottom axis is km/h): 1 m/s = 3.6 km/h
     for ax in (ax1, ax2):
-        top = ax.secondary_xaxis("top", functions=(lambda x: x*3.6, lambda x: x/3.6))
-        top.set_xlabel("Speed [km/h]")
+        top = ax.secondary_xaxis("top", functions=(lambda x: x/3.6, lambda x: x*3.6))
+        top.set_xlabel("Speed [m/s]")
 
-    fig.suptitle("Fastback: default vs spoiler")
-    fig.tight_layout()
-    save(fig, "G_spoiler_loads_vs_speed")
+    save(fig1, "G1_spoiler_axle_load_change_vs_speed")
+    save(fig2, "G2_spoiler_front_load_share_vs_speed")
 
     return pd.DataFrame(table)
 
