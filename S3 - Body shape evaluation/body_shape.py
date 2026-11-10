@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-# --- SHARED STYLE (same as S1 and S2) ---
+# --- STYLE ---
 GREY = "0.5"
 
 plt.rcParams.update({
@@ -25,10 +25,10 @@ plt.rcParams.update({
 
 # --- IMPORT DATA ---
 
-G = 9.81
-RHO = 1.225
+G = 9.81     # [m/s^2] gravitational acceleration
+RHO = 1.225  # [kg/m^3] air density
 
-SCALE = 4  # model-to-full-size linear scale factor (1:4)
+SCALE = 4  # [-] model-to-full-size linear scale (1:4)
 
 data_dir = Path(__file__).parent / "datasets" / "DrivAer experimental"
 
@@ -58,19 +58,19 @@ MASS_DISTRIBUTION = {
 AREA = {name: data["Frontal Area (m^2)"].mean() * SCALE**2 for name, data in VEHICLES.items()}
 WHEELBASE = {name: data["Wheelbase Length (m)"].mean() * SCALE for name, data in VEHICLES.items()}
 
-SPEEDS = [20, 30, 40, 50]  # m/s
+SPEEDS = [20, 30, 40, 50]  # [m/s] table speeds
 
-# One colour per vehicle, used in every figure (same viridis series colours as S1 and S2)
+# One colour per vehicle
 COLOURS = dict(zip(VEHICLES, plt.cm.viridis(np.linspace(0, 0.85, len(VEHICLES)))))
 
-# Coefficient names for axis labels, written as in S2 (mathtext)
+# Axis labels for each coefficient
 COEFF_LABELS = {"Cd": r"$C_d$", "Cl": r"$C_L$", "Cl_f": r"$C_{L,f}$", "Cl_r": r"$C_{L,r}$"}
 
 FIGURE_DIR = Path(__file__).parent / "figures"
 
 # Change in aerodynamic coefficients when a spoiler is added to the fastback
 SPOILER_DELTA = {"Cd": 0.062, "Cl": -0.2, "Cl_f": -0.02, "Cl_r": -0.18}
-SPOILER_COLOUR = plt.cm.viridis(0.6)  # second colour for the spoiler fastback, distinct from the default
+SPOILER_COLOUR = plt.cm.viridis(0.6)  # spoiler variant
 
 
 def aerobalance(vehiclce):
@@ -86,7 +86,7 @@ def aerobalance(vehiclce):
     return Cd, Cl, Cl_f, Cl_r, ab
 
 def dynamic_loads(vehicle, v, Cl_f=None, Cl_r=None):
-    # Cl_f and Cl_r can be passed in to override the measured values (used for the spoiler variant)
+    # Optional Cl_f, Cl_r override the measured values (spoiler variant)
     if Cl_f is None or Cl_r is None:
         _, _, Cl_f, Cl_r, _ = aerobalance(VEHICLES[vehicle])
     W = MASS[vehicle]*G
@@ -100,23 +100,22 @@ def dynamic_loads(vehicle, v, Cl_f=None, Cl_r=None):
 # --- PLOT SETUP ---
 
 def save(fig, name, retries=5):
-    """Save to figures/. Retries because Windows can briefly lock a PNG that is open
-    in a preview or being scanned/synced, which shows up as OSError 22."""
-    FIGURE_DIR.mkdir(exist_ok=True)  # create the figures folder if it does not exist yet
+    """Save to figures/, retrying if Windows briefly locks the file."""
+    FIGURE_DIR.mkdir(exist_ok=True)
     for attempt in range(retries):
         try:
             fig.savefig(FIGURE_DIR / f"{name}.png")
             return
         except OSError:
-            if attempt == retries - 1:  # last try failed, so give up and raise the error
+            if attempt == retries - 1:
                 raise
-            time.sleep(0.5)  # wait half a second, then try again
+            time.sleep(0.5)
 
 
 # --- FIGURES ---
 
 def plot_coefficients_bar(results):
-    # Build a table with one row per vehicle and the four coefficients as columns
+    # One row per vehicle, one column per coefficient
     table = pd.DataFrame.from_dict(results, orient="index")[["Cd", "Cl", "Cl_f", "Cl_r"]]
 
     fig, ax = plt.subplots()
@@ -124,16 +123,16 @@ def plot_coefficients_bar(results):
     width = 0.25  # width of each bar
 
     for i, name in enumerate(table.index):
-        # Offset each vehicle's bars so the three bars in a group sit side by side
+        # Offset each vehicle's bars side by side
         bars = ax.bar(x + (i - 1)*width, table.loc[name], width, color=COLOURS[name], label=name)
-        # Write the value on top of each bar, with 3 decimal places, turned sideways so neighbours don't overlap
+        # Values on top, rotated to avoid overlap
         ax.bar_label(bars, fmt="%.3f", padding=2, rotation=90)
 
-    ax.margins(y=0.2)  # leave room above and below the bars for the sideways labels
-    ax.set_xticks(x, [COEFF_LABELS[c] for c in table.columns])  # label each group with its coefficient name
+    ax.margins(y=0.2)  # room for the rotated labels
+    ax.set_xticks(x, [COEFF_LABELS[c] for c in table.columns])
     ax.set_ylabel("Coefficient [-]")
     ax.set_title("Aerodynamic coefficients by body shape")
-    ax.axhline(0, color=GREY, linewidth=0.8)  # zero line, so negative bars are clear
+    ax.axhline(0, color=GREY, linewidth=0.8)  # zero line
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.1), ncol=len(VEHICLES))
     fig.tight_layout()
     save(fig, "A_coefficients_bar")
@@ -142,16 +141,15 @@ def plot_coefficients_bar(results):
 
 
 def plot_loads_vs_speed():
-    # Continuous speed range from 0 to 60 m/s, for smooth curves
-    v = np.linspace(0, 60, 121)
+    v = np.linspace(0, 60, 121)  # [m/s]
 
     fig1, ax1 = plt.subplots()  # change in axle load
     fig2, ax2 = plt.subplots()  # front share of normal load
-    table = {"Speed (m/s)": v}  # keeps the plotted numbers so they can go to Excel
+    table = {"Speed (m/s)": v}  # plotted data, exported to Excel
 
     for name in VEHICLES:
-        N_f0, N_r0 = dynamic_loads(name, 0)  # static axle loads, at zero speed
-        N_f, N_r = dynamic_loads(name, v)    # axle loads at every speed in v (works on arrays)
+        N_f0, N_r0 = dynamic_loads(name, 0)  # static axle loads
+        N_f, N_r = dynamic_loads(name, v)
 
         # Change from static, as a percentage of the static load
         dN_f = (N_f - N_f0) / N_f0 * 100
@@ -162,7 +160,7 @@ def plot_loads_vs_speed():
         ax1.plot(v*3.6, dN_r, color=COLOURS[name], linestyle="--", label=f"{name} rear")   # rear: dashed
 
         ax2.plot(v*3.6, share, color=COLOURS[name], label=name)
-        # Static front share: MASS_DISTRIBUTION is already a percentage
+        # Static front share
         ax2.axhline(MASS_DISTRIBUTION[name], color=COLOURS[name], linestyle=":", label=f"{name} static")
 
         table[f"{name} dN_f (%)"] = dN_f
@@ -180,7 +178,7 @@ def plot_loads_vs_speed():
     ax2.set_title("Front share of normal load with speed by body shape")
     ax2.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
 
-    # Secondary axis on top in m/s for both figures (bottom axis is km/h): 1 m/s = 3.6 km/h
+    # Secondary speed axis in m/s
     for ax in (ax1, ax2):
         top = ax.secondary_xaxis("top", functions=(lambda x: x/3.6, lambda x: x*3.6))
         top.set_xlabel("Speed [m/s]")
@@ -199,7 +197,7 @@ def plot_cl_r_correction(results):
         wf = MASS_DISTRIBUTION[name] / 100  # static front weight fraction (0 to 1)
 
         Cl_r_target = Cl_f * (1 - wf) / wf  # Cl_r that would split the aero lift like the weight
-        dCl_r = Cl_r_target - Cl_r          # how much Cl_r must change to get there
+        dCl_r = Cl_r_target - Cl_r          # required change in Cl_r
 
         rows[name] = {"Cl_r target": Cl_r_target, "dCl_r": dCl_r}
 
@@ -238,7 +236,7 @@ def plot_spoiler_coefficients(variants):
     width = 0.35  # width of each bar
 
     for i, name in enumerate(table.index):
-        # Offset the two variants so their bars sit side by side in each group
+        # Offset the two variants side by side
         bars = ax.bar(x + (i - 0.5)*width, table.loc[name], width, color=colours[i], label=name)
         ax.bar_label(bars, fmt="%.3f", padding=2, rotation=90)
 
@@ -260,13 +258,12 @@ def plot_spoiler_coefficients(variants):
 
 
 def plot_spoiler_loads(variants):
-    # Same continuous speed range as the other load plots
-    v = np.linspace(0, 60, 121)
+    v = np.linspace(0, 60, 121)  # [m/s]
     colours = [COLOURS["FASTBACK"], SPOILER_COLOUR]
 
     fig1, ax1 = plt.subplots()  # change in axle load
     fig2, ax2 = plt.subplots()  # front share of normal load
-    table = {"Speed (m/s)": v}  # keeps the plotted numbers so they can go to Excel
+    table = {"Speed (m/s)": v}  # plotted data, exported to Excel
 
     for colour, (name, c) in zip(colours, variants.items()):
         N_f0, N_r0 = dynamic_loads("FASTBACK", 0, c["Cl_f"], c["Cl_r"])  # static axle loads
@@ -296,7 +293,7 @@ def plot_spoiler_loads(variants):
     ax2.set_title("Fastback front share of normal load with speed: default vs spoiler")
     ax2.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
 
-    # Secondary axis on top in m/s for both figures (bottom axis is km/h): 1 m/s = 3.6 km/h
+    # Secondary speed axis in m/s
     for ax in (ax1, ax2):
         top = ax.secondary_xaxis("top", functions=(lambda x: x/3.6, lambda x: x*3.6))
         top.set_xlabel("Speed [m/s]")

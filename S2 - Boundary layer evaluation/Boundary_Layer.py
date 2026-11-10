@@ -5,7 +5,7 @@ from pathlib import Path
 from matplotlib.patches import Patch
 import time
 
-# --- SHARED STYLE (matches the coefficient sensitivity figures) ---
+# --- STYLE ---
 GREY = "0.5"
 COMP_COLOUR = "#dfe9f3"   # compression section background
 WS_COLOUR   = "#f3ebdc"   # working section background
@@ -28,8 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent
 PLOT_DIR = BASE_DIR / "plots"
 
 def save(fig, name, retries=5):
-    """Save to plots/. Retries because Windows can briefly lock a PNG that is open
-    in a preview or being synced, which shows up as OSError 22."""
+    """Save to plots/, retrying if Windows briefly locks the file."""
     PLOT_DIR.mkdir(exist_ok=True)
     for attempt in range(retries):
         try:
@@ -41,10 +40,11 @@ def save(fig, name, retries=5):
             time.sleep(0.5)
 
 
-A_ws    = 0.31*0.31
-nu      = 0.000015
-Re_tr   = 500000
-ws_x    = 1.125
+# --- INPUTS ---
+A_ws    = 0.31*0.31     # [m^2] working section area
+nu      = 0.000015      # [m^2/s] kinematic viscosity of air
+Re_tr   = 500000        # [-] flat-plate transition Re_x
+ws_x    = 1.125         # [m] working section start
 
 PROFILE_XLSX = BASE_DIR / "Armfield Wind Tunnel Inlet Contraction and Working Section Profile.xlsx"
 
@@ -52,13 +52,14 @@ wt_x = np.array(pd.read_excel(PROFILE_XLSX, skiprows=2, usecols="D", nrows=76)).
 wt_y = np.array(pd.read_excel(PROFILE_XLSX, skiprows=2, usecols="E", nrows=76)).ravel()/1000
 wt_z = np.array(pd.read_excel(PROFILE_XLSX, skiprows=2, usecols="F", nrows=76)).ravel()/1000
 
-# Length along the tunnel: cumulative arc length of the x-y profile, starting at the inlet
+# --- GEOMETRY ---
+# Distance along the wall (arc length) from the inlet
 dl = np.hypot(np.diff(wt_x), np.diff(wt_y))
 l = np.concatenate([[0], np.cumsum(dl)])
-# Start of the working section expressed as a length, not an x coordinate
+# Working section start as a wall length
 ws_l = np.interp(ws_x, wt_x, l)
 
-speeds = np.array([10, 20, 30, 40])   # [m/s]
+speeds = np.array([10, 20, 30, 40])   # [m/s] working section speeds
 colors = plt.cm.viridis(np.linspace(0, 0.85, len(speeds)))
 
 def laminar_boundary_layer(Re_x,wt_x):
@@ -86,7 +87,7 @@ def compute_layer(U_ws):
     # Boundary layer
     is_turbulent = Re_x >= Re_tr
     i_tr = np.argmax(is_turbulent)
-    # Turbulent transition length (NaN if the flow never turns turbulent)
+    # Transition length (NaN if the flow stays laminar)
     x_tr = l[i_tr] if is_turbulent.any() else np.nan
 
 
@@ -107,10 +108,8 @@ z_mm = wt_z*1000  # lateral width, used for the top-view shading
 
 
 def shade_tunnel(ax, x, z):
-    # Background bands behind the lines, following the tunnel width along x.
-    # Scaled to the plot height so it doesn't squash the thickness curves.
-    # Working section is filled first, then the compression section is drawn on
-    # a fine grid over it, so the boundary sits exactly at ws_x with no gap.
+    """Background shaped like the tunnel width (top view), scaled to the panel height."""
+    # Working section first, compression section drawn over it
     top = ax.get_ylim()[1]
     xf = np.linspace(x.min(), x.max(), 2000)
     width = np.interp(xf, x, z)/z.max()*top
@@ -118,13 +117,14 @@ def shade_tunnel(ax, x, z):
     ax.fill_between(xf, 0, width, color=WS_COLOUR, linewidth=0, zorder=0)
     ax.fill_between(xf, 0, width, where=compression, color=COMP_COLOUR, linewidth=0, zorder=0)
 
-    # Second legend inside the plot, with a white background; kept when the speed legend is drawn below
+    # Section legend inside the plot
     handles = [Patch(color=COMP_COLOUR, label="Compression section"),
                Patch(color=WS_COLOUR, label="Working section")]
     ax.add_artist(ax.legend(handles=handles, loc="lower right", frameon=True,
                             facecolor="white", edgecolor="none", framealpha=0.9))
 
 
+# --- FIGURES ---
 # Local velocity
 fig0, ax0 = plt.subplots()
 # Boundary layer thickness

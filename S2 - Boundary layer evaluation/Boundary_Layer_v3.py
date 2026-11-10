@@ -7,7 +7,7 @@ from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import PchipInterpolator
 import time
 
-# --- SHARED STYLE (matches the coefficient sensitivity figures) ---
+# --- STYLE ---
 GREY = "0.5"
 COMP_COLOUR = "#dfe9f3"   # compression section background
 WS_COLOUR   = "#f3ebdc"   # working section background
@@ -30,8 +30,7 @@ BASE_DIR = Path(__file__).resolve().parent
 PLOT_DIR = BASE_DIR / "plots"
 
 def save(fig, name, retries=5):
-    """Save to plots/. Retries because Windows can briefly lock a PNG that is open
-    in a preview or being synced, which shows up as OSError 22."""
+    """Save to plots/, retrying if Windows briefly locks the file."""
     PLOT_DIR.mkdir(exist_ok=True)
     for attempt in range(retries):
         try:
@@ -43,45 +42,40 @@ def save(fig, name, retries=5):
             time.sleep(0.5)
 
 
-A_ws    = 0.31*0.31
-nu      = 0.000015
-Re_tr   = 500000      # flat-plate transition Reynolds number Re_x (zero pressure gradient)
-ws_x    = 1.125
+# --- INPUTS ---
+A_ws    = 0.31*0.31     # [m^2] working section area
+nu      = 0.000015      # [m^2/s] kinematic viscosity of air
+Re_tr   = 500000        # [-] flat-plate transition Re_x
+ws_x    = 1.125         # [m] working section start
 
-# Transition is checked in terms of momentum-thickness Reynolds number, because
-# Thwaites gives theta directly and Re_theta does not depend on where x = 0 is.
-# Blasius: theta = 0.664 x / sqrt(Re_x)  ->  Re_theta = 0.664 sqrt(Re_x)
-Re_theta_tr = 0.664*np.sqrt(Re_tr)     # ~470 for Re_x = 5e5
+# Transition as Re_theta via Blasius: theta = 0.664 x / sqrt(Re_x)
+Re_theta_tr = 0.664*np.sqrt(Re_tr)     # ~470
 
 PROFILE_XLSX = BASE_DIR / "Armfield Wind Tunnel Inlet Contraction and Working Section Profile.xlsx"
 
-# header=None: otherwise pandas uses the first data row (the inlet point) as column names and drops it
+# --- GEOMETRY ---
+# header=None keeps the first data row (inlet point)
 profile = pd.read_excel(PROFILE_XLSX, skiprows=2, usecols="D:F", nrows=76, header=None).to_numpy()/1000
 x_pts, y_pts, z_pts = profile[:, 0], profile[:, 1], profile[:, 2]
 
-# Length along the tunnel: cumulative arc length of the x-y profile, starting at the inlet
+# Distance along the wall (arc length) from the inlet
 l_pts = np.concatenate([[0], np.cumsum(np.hypot(np.diff(x_pts), np.diff(y_pts)))])
 
-# The profile points are ~25 mm apart. Resample onto a 1 mm grid so the integral,
-# dU/dx and the transition location are not limited to the spreadsheet spacing.
-# PCHIP = smooth, shape-preserving spline: unlike straight-line interpolation it gives a
-# continuous slope, so dU/dx (and lambda, H) don't jump at every spreadsheet point,
-# and unlike a cubic spline it can't overshoot (no artificial bumps in the wall).
+# Resample onto a 1 mm grid (PCHIP: smooth, no overshoot)
 l = np.arange(0, l_pts[-1], 0.001)
 l = np.append(l, l_pts[-1])
 wt_x = PchipInterpolator(l_pts, x_pts)(l)
 wt_y = PchipInterpolator(l_pts, y_pts)(l)
 wt_z = PchipInterpolator(l_pts, z_pts)(l)
-# Start of the working section expressed as a length, not an x coordinate
+# Working section start as a wall length
 ws_l = np.interp(ws_x, wt_x, l)
 
-speeds = np.array([5, 10, 20, 30, 40])   # [m/s]
+speeds = np.array([5, 10, 20, 30, 40])   # [m/s] working section speeds
 colors = plt.cm.viridis(np.linspace(0, 0.85, len(speeds)))
 
 
 # --- THWAITES CLOSURE RELATIONS ---
-# Curve fits to Thwaites' tabulated values (White, Viscous Fluid Flow), valid for
-# -0.09 <= lambda <= 0.25. lambda > 0 = favourable gradient (accelerating flow).
+# Curve fits to Thwaites' table (White, Viscous Fluid Flow), valid for -0.09 <= lambda <= 0.25
 LAM_MIN, LAM_MAX = -0.09, 0.25
 
 def thwaites_H(lam):
@@ -95,15 +89,12 @@ def thwaites_shear(lam):
 
 
 def thwaites_theta(U_x, l):
-    """Laminar momentum thickness from Thwaites' integral, assuming theta = 0 at the inlet:
-       theta^2 = 0.45 nu / U^6 * integral(U^5 dl)"""
+    """Laminar theta from Thwaites: theta^2 = 0.45 nu / U^6 * integral(U^5 dl), theta = 0 at the inlet."""
     integral = cumulative_trapezoid(U_x**5, l, initial=0)
     return np.sqrt(0.45*nu*integral/U_x**6)
 
 
-# Turbulent 1/7th power law (flat plate, zero pressure gradient):
-#   delta = 0.16 x / Re_x^(1/7), delta* = delta/8, theta = 7*delta/72
-# Coefficients kept consistent so H = 9/7 = 1.29
+# Turbulent 1/7th power law: delta = 0.16 x / Re_x^(1/7), delta* = delta/8, theta = 7 delta/72 (H = 9/7)
 C_DELTA = 0.16
 C_DSTAR = C_DELTA/8         # 0.0200
 C_THETA = C_DELTA*7/72      # 0.0156
@@ -128,14 +119,12 @@ def compute_layer(U_ws):
     lam = theta_lam**2/nu*dUdl                 # pressure-gradient parameter
     H_lam = thwaites_H(lam)
     delta_star_lam = H_lam*theta_lam
-    # Thwaites has no velocity profile, so delta is not an output.
-    # Approximation: Blasius ratio delta/theta = 4.91/0.664 = 7.4
+    # Thwaites gives no delta: Blasius ratio delta/theta = 7.4
     delta_lam = (4.91/0.664)*theta_lam
     Re_theta = U_x*theta_lam/nu
 
     # --- TRANSITION ---
-    # Favourable gradient (lambda > 0) stabilises the laminar layer, so the flat-plate
-    # criterion is only applied where the gradient is zero or adverse.
+    # Criterion applied only where the gradient is zero or adverse
     no_favourable = lam <= 1e-6
     trips = (Re_theta >= Re_theta_tr) & no_favourable
     if trips.any():
@@ -153,8 +142,7 @@ def compute_layer(U_ws):
     if i_tr is not None:
         U_tr = U_x[i_tr]
         theta_tr = theta_lam[i_tr]
-        # Virtual origin: turbulent length that gives the same theta as the laminar layer at transition
-        # theta = C_THETA * x^(6/7) * (nu/U)^(1/7)  ->  solve for x
+        # Virtual origin that matches theta at transition
         origin_turb = ((theta_tr*(U_tr/nu)**(1/7))/C_THETA)**(7/6)
         x_turb = origin_turb + (l[is_turbulent] - x_tr)
         Re_turb = U_x[is_turbulent]*x_turb/nu
@@ -173,10 +161,8 @@ z_mm = wt_z*1000  # lateral width, used for the top-view shading
 
 
 def shade_tunnel(ax, x, z):
-    # Background bands behind the lines, following the tunnel width along x.
-    # Scaled to the plot height so it doesn't squash the thickness curves.
-    # Working section is filled first, then the compression section is drawn on
-    # a fine grid over it, so the boundary sits exactly at ws_x with no gap.
+    """Background shaped like the tunnel width (top view), scaled to the panel height."""
+    # Working section first, compression section drawn over it
     top = ax.get_ylim()[1]
     xf = np.linspace(x.min(), x.max(), 2000)
     width = np.interp(xf, x, z)/z.max()*top
@@ -184,13 +170,14 @@ def shade_tunnel(ax, x, z):
     ax.fill_between(xf, 0, width, color=WS_COLOUR, linewidth=0, zorder=0)
     ax.fill_between(xf, 0, width, where=compression, color=COMP_COLOUR, linewidth=0, zorder=0)
 
-    # Second legend inside the plot, with a white background; kept when the speed legend is drawn below
+    # Section legend inside the plot
     handles = [Patch(color=COMP_COLOUR, label="Compression section"),
                Patch(color=WS_COLOUR, label="Working section")]
     ax.add_artist(ax.legend(handles=handles, loc="lower right", frameon=True,
                             facecolor="white", edgecolor="none", framealpha=0.9))
 
 
+# --- FIGURES ---
 # Local velocity
 fig0, ax0 = plt.subplots()
 # Boundary layer thickness
@@ -228,18 +215,16 @@ for U, c in zip(speeds, colors):
     th_ws = np.interp(ws_l, l, r["theta"])*1000
     ds_ws = np.interp(ws_l, l, r["delta_star"])*1000
     into_ws = (x_tr - ws_l)*1000
-    # Largest Re_theta reached where the gradient is favourable: if this stays below
-    # Re_theta_tr, the contraction would stay laminar even with the flat-plate criterion
+    # Max Re_theta in the favourable-gradient region
     fav = r["lam"] > 1e-6
     max_Re_theta_fav = r["Re_theta"][fav].max()
-    # Displacement effect: the effective square side shrinks by 2*delta* (one delta* per wall)
+    # Displacement effect: the square side shrinks by 2 delta*
     side = np.sqrt(A_ws)
     area_loss = 1 - ((side - 2*r["delta_star"][-1])/side)**2
     print(f"{U:>10} {x_tr*1000:>10.0f} {into_ws:>13.0f} {th_ws:>17.3f} {ds_ws:>14.3f} "
           f"{r['delta_star'][-1]*1000:>18.3f} {area_loss*100:>18.2f} {max_Re_theta_fav:>16.0f}")
 
-# lambda = (theta^2/nu) dU/dx does not depend on speed: theta^2 scales with 1/U and dU/dx
-# with U, so one curve covers every speed (valid only while the layer is laminar)
+# lambda is the same for every speed (theta^2 ~ 1/U, dU/dx ~ U)
 ax5.plot(l_mm, r["lam"], color=GREY, label="All speeds")
 
 for ax in (ax0, ax1, ax2, ax3, ax4, ax5):

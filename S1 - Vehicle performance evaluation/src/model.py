@@ -1,15 +1,13 @@
 import numpy as np
 import params as p
 
-# All functions take v in [m/s] and work on a single value or a numpy array.
-# Gears are numbered 1 to 7.
+# All functions take v [m/s] as a scalar or array; gears are numbered 1 to 7
 
 
 # --- ENGINE ---
 
 def engine_torque(rpm):
-    """Engine torque [Nm] from the map. Outside 2000-7000 rpm np.interp holds the end values
-    (below 2000 rpm this stands in for clutch slip at launch)."""
+    """Engine torque [Nm] from the map, held at the end values outside it."""
     return np.interp(rpm, p.RPM, p.TORQUE)
 
 def engine_rpm(v, gear):
@@ -18,7 +16,7 @@ def engine_rpm(v, gear):
     return v/p.WHEEL_RADIUS * ratio * 60/(2*np.pi)
 
 
-# --- AERO (with crosswind p.WIND) ---
+# --- AERODYNAMICS ---
 
 def yaw_angle(v):
     """Yaw angle [deg] of the relative wind. 0 in still air."""
@@ -29,12 +27,11 @@ def air_speed_sq(v):
     return v**2 + p.WIND**2
 
 def drag_coeff(v):
-    """C_d at the current yaw angle: baseline CD plus the rise from the CD_PSI table.
-    Beyond the table (low speed in a crosswind) np.interp holds the last value."""
+    """C_d at the current yaw angle: baseline plus the rise from the CD_PSI table."""
     return p.CD + np.interp(yaw_angle(v), p.PSI, p.CD_PSI) - p.CD_PSI[0]
 
 def lift_coeff(v):
-    """C_L at the current yaw angle, built the same way from the CL_PSI table."""
+    """C_L at the current yaw angle: baseline plus the rise from the CL_PSI table."""
     return p.CL + np.interp(yaw_angle(v), p.PSI, p.CL_PSI) - p.CL_PSI[0]
 
 

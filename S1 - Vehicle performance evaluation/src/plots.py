@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import params as p
 from model import drag_force, rolling_force, resistance_force
 
-# --- SHARED STYLE (same as S2, S3 and S4) ---
+# --- STYLE ---
 FIG_DIR  = Path(__file__).resolve().parent.parent / "figures"
 FIGSIZE  = (8, 5)
 GREY     = "0.5"
@@ -25,17 +25,17 @@ plt.rcParams.update({
     "lines.linewidth":   1.5,
 })
 
-# Viridis series colours, as in S2 and S3: purple -> teal -> green
+# Viridis colours: purple -> teal -> green
 PURPLE = plt.cm.viridis(0.0)
 TEAL   = plt.cm.viridis(0.425)
 GREEN  = plt.cm.viridis(0.85)
 
 def series_colours(n):
-    """n viridis colours, same range as the later sections."""
+    """n viridis colours from purple to green."""
     return plt.cm.viridis(np.linspace(0, 0.85, n))
 
 def legend_below(ax, ncol=2, y=-0.12, **kw):
-    """Legend centred under the axes, as in S3."""
+    """Legend centred below the axes."""
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, y), ncol=ncol, **kw)
 
 def ms_axis_top(ax):
@@ -45,8 +45,7 @@ def ms_axis_top(ax):
     return top
 
 def save(fig, name, retries=5):
-    """Save to figures/. Retries because Windows can briefly lock a PNG that is open
-    in a preview or being scanned/synced, which shows up as OSError 22."""
+    """Save to figures/, retrying if Windows briefly locks the file."""
     FIG_DIR.mkdir(exist_ok=True)
     for attempt in range(retries):
         try:
@@ -61,8 +60,7 @@ def save(fig, name, retries=5):
 # --- FIGURES ---
 
 def fig_engine_curves():
-    """Full-load torque and power against engine speed, from the params.py engine map.
-    Power is computed from torque (P = T*omega); datasheet power points are overlaid as a check."""
+    """Full-load torque and power against engine speed, with datasheet power as a check."""
     rpm = np.linspace(p.RPM[0], p.REV_LIMIT, 501)
     T = np.interp(rpm, p.RPM, p.TORQUE)
     P = T*rpm*2*np.pi/60/1e3
@@ -216,9 +214,8 @@ def fig_elasticity(ela):
 
 
 def fig_coeff_sensitivity(sens, name):
-    """One figure, four flat panels stacked vertically, one line per coefficient value:
-    (a) maximum speed, (b) acceleration, (c) elasticity, (d) the resistance power the
-    coefficient acts on (drag for C_d and crosswind, rolling for C_L). Legends sit to the right."""
+    """Four stacked panels, one line per value: maximum speed, acceleration, elasticity
+    and the resistance power the parameter acts on."""
     from simulate import time_to_speed
     label = {"CD":   lambda val: f"$C_d$ = {val:.2f}",
              "CL":   lambda val: f"$C_L$ = {val:.2f}",
@@ -280,7 +277,7 @@ def fig_coeff_sensitivity(sens, name):
     ax_d.set_xlim(0, v_kmh[show].max())
     ax_d.set_ylim(bottom=0)
 
-    # Legends to the right of each panel, so the panels can stay wide and flat
+    # Legends to the right of each panel
     for ax in (ax_v, ax_a, ax_e, ax_d):
         ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=9)
     fig.suptitle({"CD":   "Effect of drag coefficient $C_d$ on performance",

@@ -2,7 +2,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-# --- SHARED STYLE (same as S1, S2 and S3) ---
+# --- STYLE ---
 GREY = "0.5"
 
 plt.rcParams.update({
@@ -24,8 +24,7 @@ FIGURE_DIR = Path(__file__).parent / "figures"
 
 
 # --- MESH STUDY DATA (NACA0015, alpha = 8 deg, k-omega SST, low y+) ---
-# Base size shrinks by 0.75 each mesh. The 20 inflation layers are the same on
-# every mesh, so the base size (not the cell count) is used as the cell size h.
+# Base size shrinks by 0.75 each mesh; inflation layers are fixed, so base size is used as h
 
 MESHES = {
     "A-M1": {"base": 30.0,     "N":  48502, "Cl": -0.8543, "Cd": 0.04239, "time": 138.5},
@@ -99,8 +98,7 @@ def analyse(triplet, key):
         result["GCI_obs"] = gci(phi1, phi2, r21, p)
         result["GCI"] = gci(phi1, phi2, r21, p_used)
     else:
-        # Oscillatory (R < 0) or divergent (R > 1): GCI does not apply.
-        # Use half the range of the three values as the uncertainty instead.
+        # Oscillatory (R < 0) or divergent (R > 1): half range of the three values
         values = [phi1, phi2, phi3]
         half_range = (max(values) - min(values)) / 2
         result["type"] = "oscillatory" if R < 0 else "divergent"
@@ -142,7 +140,8 @@ for i, name in enumerate(names):
     print(f"{name:6} {m['N']:8d} {m['Cl']:8.4f} {m['Cd']:9.5f} {dcl:>8} {dcd:>8} {m['time']:9.1f}")
 
 
-# --- MESH SELECTION: coarsest mesh whose uncertainty is below TARGET for every quantity ---
+# --- MESH SELECTION ---
+# Coarsest mesh with uncertainty below TARGET for every quantity
 
 def uncertainty(triplet):
     """GCI for each quantity on a triplet, with the scatter check applied.
@@ -200,7 +199,7 @@ for key in QUANTITIES:
     print(f"  {key}: {change:.2f} %")
 
 
-# --- FIGURE: Cl and Cd against cell size ---
+# --- FIGURE ---
 
 h = np.array([m["base"] for m in MESHES.values()])
 selected = MAIN_TRIPLET[2]

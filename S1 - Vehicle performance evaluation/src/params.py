@@ -7,7 +7,7 @@ G              = 9.81       # [m/s^2] gravitational acceleration
 # --- VEHICLE ---
 MASS           = 1685       # [kg] vehicle mass - coursework brief
 MASS_FACTOR    = 1.3        # [-] rotating inertia factor, m_eff = MASS_FACTOR*MASS (assumed)
-V_LIMIT        = 250/3.6    # [m/s] electronic speed limiter (assumed - replace with your value)
+V_LIMIT        = 250/3.6    # [m/s] electronic speed limiter (assumed)
 
 # --- AERO ---
 CD             = 0.36       # [-] drag coefficient - coursework brief

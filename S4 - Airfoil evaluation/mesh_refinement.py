@@ -1,7 +1,7 @@
 import numpy as np
 
-# 2D fluid domain area [m^2] (only needed for absolute h; it cancels in r)
-A_DOMAIN = 1.5 * 0.3
+# --- MESH DATA ---
+A_DOMAIN = 1.5 * 0.3  # [m^2] 2D fluid domain area
 
 # Mesh results: 1 = fine, 2 = medium, 3 = coarse
 coarse = {   # A-M3
@@ -23,6 +23,8 @@ fine = {     # A-M7
 }
 
 
+# --- GCI FUNCTIONS (Celik et al., 2008) ---
+
 def cell_size(A_domain, N):
     """Representative 2D cell size h = sqrt(A / N)."""
     return np.sqrt(A_domain / N)
@@ -39,18 +41,12 @@ def epsilon(phi_coarser, phi_finer):
 
 
 def observed_order(phi1, phi2, phi3, r21, r32, tol=1e-6, max_iter=100):
-    """
-    Observed order of accuracy p (Celik et al., 2008), solved by
-    fixed-point iteration for non-constant refinement ratio.
-    phi1 = fine, phi2 = medium, phi3 = coarse.
-    Returns p and the number of iterations used.
-    """
+    """Observed order p and iteration count, by fixed-point iteration. 1 = fine, 2 = medium, 3 = coarse."""
     e21 = epsilon(phi2, phi1)
     e32 = epsilon(phi3, phi2)
     s = np.sign(e32 / e21)
 
-    # First guess: ignore the correction term (q = 0)
-    p = np.abs(np.log(np.abs(e32 / e21))) / np.log(r21)
+    p = np.abs(np.log(np.abs(e32 / e21))) / np.log(r21)   # first guess, q = 0
 
     for i in range(max_iter):
         q = np.log((r21**p - s) / (r32**p - s))
@@ -63,6 +59,7 @@ def observed_order(phi1, phi2, phi3, r21, r32, tol=1e-6, max_iter=100):
     return p, max_iter
 
 
+# --- RESULTS ---
 # Cell sizes and refinement ratios
 h1 = cell_size(A_DOMAIN, fine["N"])
 h2 = cell_size(A_DOMAIN, medium["N"])

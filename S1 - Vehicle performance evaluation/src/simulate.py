@@ -141,7 +141,7 @@ def elasticity_run(gear, v_start=80/3.6, v_end=120/3.6):
 
 
 # --- 4. AERODYNAMIC COEFFICIENT SENSITIVITY ---
-# One coefficient changes at a time; everything else stays at its params.py value.
+# One coefficient changes at a time; everything else stays at its params.py value
 
 COEFF_STEPS = np.array([-0.10, -0.05, 0.0, 0.05, 0.10])   # [-] same absolute +/- step for C_d and C_L
 CD_VALUES = p.CD + COEFF_STEPS   # [-] 0.26-0.46, passenger car range (~0.25-0.45)
@@ -177,8 +177,7 @@ def coeff_sensitivity(name, values, elasticity_gear=None):
 
 
 # --- 5. YAW (CROSSWIND) SENSITIVITY ---
-# A crosswind w gives airspeed sqrt(v^2 + w^2) and yaw angle atan(w/v); C_d and C_L follow
-# the CD_PSI / CL_PSI tables. Yaw is largest at low speed and falls as the car speeds up.
+# Crosswind w: airspeed sqrt(v^2 + w^2), yaw angle atan(w/v), C_d and C_L from the yaw tables
 
 WIND_CASES = np.array([0.0, 5.0, 10.0, 15.0])   # [m/s] crosswind speeds
 
